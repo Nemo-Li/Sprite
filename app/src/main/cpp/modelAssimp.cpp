@@ -63,15 +63,18 @@ void ModelAssimp::PerformGLInits() {
 
     // extract the OBJ and companion files from assets
     std::string objFilename, mtlFilename, texFilename;
-    bool isFilesPresent  =
-            gHelperObject->ExtractAssetReturnFilename("amenemhat/amenemhat.obj", objFilename) &&
-            gHelperObject->ExtractAssetReturnFilename("amenemhat/amenemhat.mtl", mtlFilename) &&
-            gHelperObject->ExtractAssetReturnFilename("amenemhat/amenemhat.jpg", texFilename);
-    if( !isFilesPresent ) {
-        MyLOGE("Model %s does not exist!", objFilename.c_str());
-        return;
-    }
+//    bool isFilesPresent  =
+//            gHelperObject->ExtractAssetReturnFilename("amenemhat/amenemhat.obj", objFilename) &&
+//            gHelperObject->ExtractAssetReturnFilename("amenemhat/amenemhat.mtl", mtlFilename) &&
+//            gHelperObject->ExtractAssetReturnFilename("amenemhat/amenemhat.jpg", texFilename);
+//    if( !isFilesPresent ) {
+//        MyLOGE("Model %s does not exist!", objFilename.c_str());
+//        return;
+//    }
 
+    gHelperObject->ExtractAssetReturnFilename("cyborg/cyborg.obj", objFilename);
+    gHelperObject->ExtractAssetReturnFilename("cyborg/cyborg.mtl", mtlFilename);
+    gHelperObject->ExtractAssetReturnFilename("cyborg/cyborg_diffuse.png", texFilename);
     modelObject->Load3DModel(objFilename);
 
     CheckGLError("ModelAssimp::PerformGLInits");
