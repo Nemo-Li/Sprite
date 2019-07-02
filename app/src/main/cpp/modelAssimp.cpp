@@ -1,19 +1,3 @@
-/*
- *    Copyright 2016 Anand Muralidhar
- *
- *    Licensed under the Apache License, Version 2.0 (the "License");
- *    you may not use this file except in compliance with the License.
- *    You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- *    Unless required by applicable law or agreed to in writing, software
- *    distributed under the License is distributed on an "AS IS" BASIS,
- *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *    See the License for the specific language governing permissions and
- *    limitations under the License.
- */
-
 #include "myShader.h"
 #include "modelAssimp.h"
 
@@ -72,9 +56,40 @@ void ModelAssimp::PerformGLInits() {
 //        return;
 //    }
 
-    gHelperObject->ExtractAssetReturnFilename("cyborg/cyborg.obj", objFilename);
-    gHelperObject->ExtractAssetReturnFilename("cyborg/cyborg.mtl", mtlFilename);
-    gHelperObject->ExtractAssetReturnFilename("cyborg/cyborg_diffuse.png", texFilename);
+    gHelperObject->ExtractAssetReturnFilename("nanosuit/nanosuit.obj", objFilename);
+    gHelperObject->ExtractAssetReturnFilename("nanosuit/nanosuit.mtl", mtlFilename);
+    gHelperObject->ExtractAssetReturnFilename("nanosuit/leg_showroom_spec.png", texFilename);
+    gHelperObject->ExtractAssetReturnFilename("nanosuit/leg_showroom_refl.png", texFilename);
+    gHelperObject->ExtractAssetReturnFilename("nanosuit/leg_showroom_ddn.png", texFilename);
+    gHelperObject->ExtractAssetReturnFilename("nanosuit/leg_dif.png", texFilename);
+    gHelperObject->ExtractAssetReturnFilename("nanosuit/helmet_showroom_spec.png", texFilename);
+    gHelperObject->ExtractAssetReturnFilename("nanosuit/helmet_showroom_refl.png", texFilename);
+    gHelperObject->ExtractAssetReturnFilename("nanosuit/helmet_showroom_ddn.png", texFilename);
+    gHelperObject->ExtractAssetReturnFilename("nanosuit/helmet_diff.png", texFilename);
+    gHelperObject->ExtractAssetReturnFilename("nanosuit/hand_showroom_spec.png", texFilename);
+    gHelperObject->ExtractAssetReturnFilename("nanosuit/hand_showroom_refl.png", texFilename);
+    gHelperObject->ExtractAssetReturnFilename("nanosuit/hand_showroom_ddn.png", texFilename);
+    gHelperObject->ExtractAssetReturnFilename("nanosuit/hand_dif.png", texFilename);
+    gHelperObject->ExtractAssetReturnFilename("nanosuit/glass_refl.png", texFilename);
+    gHelperObject->ExtractAssetReturnFilename("nanosuit/glass_dif.png", texFilename);
+    gHelperObject->ExtractAssetReturnFilename("nanosuit/glass_ddn.png", texFilename);
+    gHelperObject->ExtractAssetReturnFilename("nanosuit/front.jpg", texFilename);
+    gHelperObject->ExtractAssetReturnFilename("nanosuit/cell_leg_alpha.png", texFilename);
+    gHelperObject->ExtractAssetReturnFilename("nanosuit/cell_helmet_alpha.png", texFilename);
+    gHelperObject->ExtractAssetReturnFilename("nanosuit/cell_hand_alpha.png", texFilename);
+    gHelperObject->ExtractAssetReturnFilename("nanosuit/cell_ddn.png", texFilename);
+    gHelperObject->ExtractAssetReturnFilename("nanosuit/cell_body_alpha.png", texFilename);
+    gHelperObject->ExtractAssetReturnFilename("nanosuit/cell_arm_alpha.png", texFilename);
+    gHelperObject->ExtractAssetReturnFilename("nanosuit/body_showroom_spec.png", texFilename);
+    gHelperObject->ExtractAssetReturnFilename("nanosuit/body_showroom_refl.png", texFilename);
+    gHelperObject->ExtractAssetReturnFilename("nanosuit/body_showroom_ddn.png", texFilename);
+    gHelperObject->ExtractAssetReturnFilename("nanosuit/body_dif.png", texFilename);
+    gHelperObject->ExtractAssetReturnFilename("nanosuit/back.jpg", texFilename);
+    gHelperObject->ExtractAssetReturnFilename("nanosuit/arm_showroom_spec.png", texFilename);
+    gHelperObject->ExtractAssetReturnFilename("nanosuit/arm_showroom_refl.png", texFilename);
+    gHelperObject->ExtractAssetReturnFilename("nanosuit/arm_showroom_ddn.png", texFilename);
+    gHelperObject->ExtractAssetReturnFilename("nanosuit/arm_dif.png", texFilename);
+
     modelObject->Load3DModel(objFilename);
 
     CheckGLError("ModelAssimp::PerformGLInits");
