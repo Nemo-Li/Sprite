@@ -17,10 +17,10 @@
 package com.nemoli.sprite;
 
 import android.content.Context;
+import android.graphics.PixelFormat;
 import android.opengl.GLSurfaceView;
 import android.util.AttributeSet;
 import android.util.Log;
-import android.view.SurfaceHolder;
 
 class MyGLSurfaceView extends GLSurfaceView {
 
@@ -34,9 +34,14 @@ class MyGLSurfaceView extends GLSurfaceView {
             // create the highest possible context on a phone
             setEGLContextClientVersion(2);
 
+            setEGLConfigChooser(8, 8, 8, 8, 16, 0);
+            getHolder().setFormat(PixelFormat.TRANSLUCENT);
+            setZOrderOnTop(true);
+
             // set our custom Renderer for drawing on the created SurfaceView
             mRenderer = new MyGLRenderer();
             setRenderer(mRenderer);
+
 
             // calls onDrawFrame(...) continuously
             setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);

@@ -11,7 +11,7 @@
 void MyGLInits() {
 
     // White background
-    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+//    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
     // Enable depth test
     glEnable(GL_DEPTH_TEST);
