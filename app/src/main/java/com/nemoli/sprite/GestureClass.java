@@ -28,10 +28,10 @@ public class GestureClass {
 
    private GestureDetectorCompat mTapScrollDetector;
     private ScaleGestureDetector mScaleDetector;
-    private native void DoubleTapNative();
-    private native void ScrollNative(float distanceX, float distanceY, float positionX, float positionY);
-    private native void ScaleNative(float scaleFactor);
-    private native void MoveNative(float distanceX, float distanceY);
+    public native void DoubleTapNative();
+    public native void ScrollNative(float distanceX, float distanceY, float positionX, float positionY);
+    public native void ScaleNative(float scaleFactor);
+    public native void MoveNative(float distanceX, float distanceY);
 
     public GestureClass(Activity activity) {
 

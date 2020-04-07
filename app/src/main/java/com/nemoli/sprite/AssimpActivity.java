@@ -20,12 +20,16 @@ import android.app.Activity;
 import android.content.res.AssetManager;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
+import android.view.View;
 
 
-public class AssimpActivity extends Activity{
+public class AssimpActivity extends Activity {
     private GLSurfaceView mGLView = null;
+
     private native void CreateObjectNative(AssetManager assetManager, String pathToInternalDir);
+
     private native void DeleteObjectNative();
+
     GestureClass mGestureObject;
 
     @Override
@@ -40,11 +44,15 @@ public class AssimpActivity extends Activity{
 
         // layout has only two components, a GLSurfaceView and a TextView
         setContentView(R.layout.assimp_layout);
-        mGLView = (MyGLSurfaceView) findViewById (R.id.gl_surface_view);
+        mGLView = (MyGLSurfaceView) findViewById(R.id.gl_surface_view);
+        View hideView = findViewById(R.id.hide_view);
+        hideView.requestFocus();
 
         // mGestureObject will handle touch gestures on the screen
         mGestureObject = new GestureClass(this);
         mGLView.setOnTouchListener(mGestureObject.TwoFingerGestureListener);
+        TvControl tvControl = new TvControl(mGestureObject);
+        hideView.setOnKeyListener(tvControl.onKeyListener);
     }
 
     @Override
@@ -65,7 +73,7 @@ public class AssimpActivity extends Activity{
         super.onPause();
 
         // Android suggests that we call onPause on GLSurfaceView
-        if(mGLView != null) {
+        if (mGLView != null) {
             mGLView.onPause();
         }
     }
