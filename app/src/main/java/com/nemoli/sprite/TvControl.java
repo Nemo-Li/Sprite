@@ -17,9 +17,10 @@ public class TvControl {
         public boolean onKey(View v, int keyCode, KeyEvent event) {
             if (event.getAction() == KeyEvent.ACTION_DOWN) {
                 if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
-                    gesture.ScrollNative(10, 0, 10, 30);
+                    gesture.ScrollNative(10, 0, 10, 540);
                     return true;
                 } else if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                    gesture.ScrollNative(-10, 0, 10, 540);
                     return true;
                 }
             }
