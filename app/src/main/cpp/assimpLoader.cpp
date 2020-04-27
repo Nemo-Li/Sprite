@@ -227,10 +227,10 @@ bool AssimpLoader::Load3DModel(std::string modelFilename) {
     }
     MyLOGI("Imported %s successfully.", modelFilename.c_str());
 
-    if(!LoadTexturesToGL(modelFilename)) {
-        MyLOGE("Unable to load textures");
-        return false;
-    }
+//    if(!LoadTexturesToGL(modelFilename)) {
+//        MyLOGE("Unable to load textures");
+//        return false;
+//    }
     MyLOGI("Loaded textures successfully");
 
     GenerateGLBuffers();

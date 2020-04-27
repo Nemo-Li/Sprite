@@ -22,6 +22,12 @@ public class TvControl {
                 } else if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
                     gesture.ScrollNative(-10, 0, 10, 540);
                     return true;
+                } else if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+                    gesture.ScrollNative(0, 10, 960, 540);
+                    return true;
+                } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                    gesture.ScrollNative(0, -10, 960, 540);
+                    return true;
                 }
             }
             return false;

@@ -34,9 +34,9 @@ class MyGLSurfaceView extends GLSurfaceView {
             // create the highest possible context on a phone
             setEGLContextClientVersion(2);
 
-            setEGLConfigChooser(8, 8, 8, 8, 16, 0);
-            getHolder().setFormat(PixelFormat.TRANSLUCENT);
-            setZOrderOnTop(true);
+//            setEGLConfigChooser(8, 8, 8, 8, 16, 0);
+//            getHolder().setFormat(PixelFormat.TRANSLUCENT);
+//            setZOrderOnTop(true);
 
             // set our custom Renderer for drawing on the created SurfaceView
             mRenderer = new MyGLRenderer();

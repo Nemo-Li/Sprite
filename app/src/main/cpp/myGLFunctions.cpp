@@ -11,7 +11,7 @@
 void MyGLInits() {
 
     // White background
-//    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
     // Enable depth test
     glEnable(GL_DEPTH_TEST);
@@ -21,7 +21,7 @@ void MyGLInits() {
     MyLOGI("OpenGL %s, GLSL %s", glGetString(GL_VERSION), glGetString(GL_SHADING_LANGUAGE_VERSION));
 
     // check if the device supports GLES 3 or GLES 2
-    const char* versionStr = (const char*)glGetString(GL_VERSION);
+    const char *versionStr = (const char *) glGetString(GL_VERSION);
     if (strstr(versionStr, "OpenGL ES 3.") && gl3stubInit()) {
         MyLOGD("Device supports GLES 3");
     } else {
@@ -34,7 +34,7 @@ void MyGLInits() {
 /**
  * Checks for OpenGL errors.
  */
-void CheckGLError(std::string funcName){
+void CheckGLError(std::string funcName) {
 
     GLenum err = glGetError();
     if (err == GL_NO_ERROR) {
@@ -43,7 +43,7 @@ void CheckGLError(std::string funcName){
         MyLOGF("[FAIL GL] %s", funcName.c_str());
     }
 
-    switch(err) {
+    switch (err) {
 
         case GL_INVALID_ENUM:
             MyLOGE("GL_INVALID_ENUM: GLenum argument out of range");
@@ -62,7 +62,7 @@ void CheckGLError(std::string funcName){
             break;
 
         case GL_OUT_OF_MEMORY:
-            MyLOGE( "GL_OUT_OF_MEMORY: not enough memory left to execute command");
+            MyLOGE("GL_OUT_OF_MEMORY: not enough memory left to execute command");
             break;
 
         default:
