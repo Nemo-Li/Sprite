@@ -13,13 +13,13 @@ AssimpLoader::AssimpLoader() {
     isObjectLoaded = false;
 
     // shader related setup -- loading, attribute and uniform locations
-    std::string vertexShader    = "shaders/modelTextured.vsh";
-    std::string fragmentShader  = "shaders/modelTextured.fsh";
-    shaderProgramID         = LoadShaders(vertexShader, fragmentShader);
-    vertexAttribute         = GetAttributeLocation(shaderProgramID, "vertexPosition");
-    vertexUVAttribute       = GetAttributeLocation(shaderProgramID, "vertexUV");
-    mvpLocation             = GetUniformLocation(shaderProgramID, "mvpMat");
-    textureSamplerLocation  = GetUniformLocation(shaderProgramID, "textureSampler");
+    std::string vertexShader = "shaders/modelTextured.vsh";
+    std::string fragmentShader = "shaders/modelTextured.fsh";
+    shaderProgramID = LoadShaders(vertexShader, fragmentShader);
+    vertexAttribute = GetAttributeLocation(shaderProgramID, "vertexPosition");
+    vertexUVAttribute = GetAttributeLocation(shaderProgramID, "vertexUV");
+    mvpLocation = GetUniformLocation(shaderProgramID, "mvpMat");
+    textureSamplerLocation = GetUniformLocation(shaderProgramID, "textureSampler");
 
     CheckGLError("AssimpLoader::AssimpLoader");
 }
@@ -29,7 +29,7 @@ AssimpLoader::AssimpLoader() {
  */
 AssimpLoader::~AssimpLoader() {
     Delete3DModel();
-    if(importerPtr) {
+    if (importerPtr) {
         delete importerPtr;
         importerPtr = NULL;
     }
@@ -93,7 +93,7 @@ void AssimpLoader::GenerateGLBuffers() {
         // ***ASSUMPTION*** -- handle only one texture for each mesh
         if (mesh->HasTextureCoords(0)) {
 
-            float * textureCoords = new float[2 * mesh->mNumVertices];
+            float *textureCoords = new float[2 * mesh->mNumVertices];
             for (unsigned int k = 0; k < mesh->mNumVertices; ++k) {
                 textureCoords[k * 2] = mesh->mTextureCoords[0][k].x;
                 textureCoords[k * 2 + 1] = mesh->mTextureCoords[0][k].y;
@@ -114,7 +114,7 @@ void AssimpLoader::GenerateGLBuffers() {
 
         // copy texture index (= texture name in GL) for the mesh from textureNameMap
         aiMaterial *mtl = scene->mMaterials[mesh->mMaterialIndex];
-        aiString texturePath;	//contains filename of texture
+        aiString texturePath;    //contains filename of texture
         if (AI_SUCCESS == mtl->GetTexture(aiTextureType_DIFFUSE, 0, &texturePath)) {
             unsigned int textureId = textureNameMap[texturePath.data];
             newMeshInfo.textureIndex = textureId;
@@ -156,7 +156,7 @@ bool AssimpLoader::LoadTexturesToGL(std::string modelFilename) {
     MyLOGI("Total number of textures is %d ", numTextures);
 
     // create and fill array with texture names in GL
-    GLuint * textureGLNames = new GLuint[numTextures];
+    GLuint *textureGLNames = new GLuint[numTextures];
     glGenTextures(numTextures, textureGLNames);
 
     // Extract the directory part from the file name
@@ -170,7 +170,7 @@ bool AssimpLoader::LoadTexturesToGL(std::string modelFilename) {
 
         std::string textureFilename = (*textureIterator).first;  // get filename
         std::string textureFullPath = modelDirectoryName + "/" + textureFilename;
-        (*textureIterator).second = textureGLNames[i];	  // save texture id for filename in map
+        (*textureIterator).second = textureGLNames[i];      // save texture id for filename in map
 
         // load the texture using OpenCV
         MyLOGI("Loading texture %s", textureFullPath.c_str());
@@ -280,7 +280,7 @@ void AssimpLoader::Render3DModel(glm::mat4 *mvpMat) {
 
         // Texture
         if (modelMeshes[n].textureIndex) {
-            glBindTexture( GL_TEXTURE_2D, modelMeshes[n].textureIndex);
+            glBindTexture(GL_TEXTURE_2D, modelMeshes[n].textureIndex);
         }
 
         // Faces
@@ -308,3 +308,231 @@ void AssimpLoader::Render3DModel(glm::mat4 *mvpMat) {
 
 }
 
+void AssimpLoader::ReadNodeHierarchy(float AnimationTime, const aiNode *pNode,
+                                     const Matrix4f &ParentTransform) {
+    std::string NodeName(pNode->mName.data);
+
+    const aiAnimation *pAnimation = scene->mAnimations[0];
+
+    Matrix4f NodeTransformation(pNode->mTransformation);
+
+    const aiNodeAnim *pNodeAnim = FindNodeAnim(pAnimation, NodeName);
+
+    if (pNodeAnim) {
+        // Interpolate scaling and generate scaling transformation matrix
+        aiVector3D Scaling;
+        CalcInterpolatedScaling(Scaling, AnimationTime, pNodeAnim);
+        Matrix4f ScalingM;
+        ScalingM.InitScaleTransform(Scaling.x, Scaling.y, Scaling.z);
+
+        // Interpolate rotation and generate rotation transformation matrix
+        aiQuaternion RotationQ;
+        CalcInterpolatedRotation(RotationQ, AnimationTime, pNodeAnim);
+        Matrix4f RotationM = Matrix4f(RotationQ.GetMatrix());
+
+        // Interpolate translation and generate translation transformation matrix
+        aiVector3D Translation;
+        CalcInterpolatedPosition(Translation, AnimationTime, pNodeAnim);
+        Matrix4f TranslationM;
+        TranslationM.InitTranslationTransform(Translation.x, Translation.y, Translation.z);
+
+        // Combine the above transformations
+        NodeTransformation = TranslationM * RotationM * ScalingM;
+    }
+
+    Matrix4f GlobalTransformation = ParentTransform * NodeTransformation;
+
+    if (m_BoneMapping.find(NodeName) != m_BoneMapping.end()) {
+        uint BoneIndex = m_BoneMapping[NodeName];
+        m_BoneInfo[BoneIndex].FinalTransformation =
+                m_GlobalInverseTransform * GlobalTransformation * m_BoneInfo[BoneIndex].BoneOffset;
+    }
+
+    for (uint i = 0; i < pNode->mNumChildren; i++) {
+        ReadNodeHierarchy(AnimationTime, pNode->mChildren[i], GlobalTransformation);
+    }
+}
+
+
+void AssimpLoader::BoneTransform(float TimeInSeconds, std::vector<Matrix4f> &Transforms) {
+    Matrix4f Identity;
+    Identity.InitIdentity();
+
+    float TicksPerSecond = (float) (scene->mAnimations[0]->mTicksPerSecond != 0
+                                    ? scene->mAnimations[0]->mTicksPerSecond : 25.0f);
+    float TimeInTicks = TimeInSeconds * TicksPerSecond;
+    float AnimationTime = fmod(TimeInTicks, (float) scene->mAnimations[0]->mDuration);
+
+    ReadNodeHierarchy(AnimationTime, scene->mRootNode, Identity);
+
+    Transforms.resize(m_NumBones);
+
+    for (uint i = 0; i < m_NumBones; i++) {
+        Transforms[i] = m_BoneInfo[i].FinalTransformation;
+    }
+}
+
+
+void
+AssimpLoader::LoadBones(uint MeshIndex, const aiMesh *pMesh, std::vector<VertexBoneData> &Bones) {
+    for (uint i = 0; i < pMesh->mNumBones; i++) {
+        uint BoneIndex = 0;
+        std::string BoneName(pMesh->mBones[i]->mName.data);
+
+        if (m_BoneMapping.find(BoneName) == m_BoneMapping.end()) {
+            // Allocate an index for a new bone
+            BoneIndex = m_NumBones;
+            m_NumBones++;
+            BoneInfo bi;
+            m_BoneInfo.push_back(bi);
+            m_BoneInfo[BoneIndex].BoneOffset = pMesh->mBones[i]->mOffsetMatrix;
+            m_BoneMapping[BoneName] = BoneIndex;
+        } else {
+            BoneIndex = m_BoneMapping[BoneName];
+        }
+
+        for (uint j = 0; j < pMesh->mBones[i]->mNumWeights; j++) {
+            uint VertexID =
+                    m_Entries[MeshIndex].BaseVertex + pMesh->mBones[i]->mWeights[j].mVertexId;
+            float Weight = pMesh->mBones[i]->mWeights[j].mWeight;
+            Bones[VertexID].AddBoneData(BoneIndex, Weight);
+        }
+    }
+}
+
+
+uint AssimpLoader::FindPosition(float AnimationTime, const aiNodeAnim *pNodeAnim) {
+    for (uint i = 0; i < pNodeAnim->mNumPositionKeys - 1; i++) {
+        if (AnimationTime < (float) pNodeAnim->mPositionKeys[i + 1].mTime) {
+            return i;
+        }
+    }
+
+//    assert(0);
+
+    return 0;
+}
+
+
+uint AssimpLoader::FindRotation(float AnimationTime, const aiNodeAnim *pNodeAnim) {
+    assert(pNodeAnim->mNumRotationKeys > 0);
+
+    for (uint i = 0; i < pNodeAnim->mNumRotationKeys - 1; i++) {
+        if (AnimationTime < (float) pNodeAnim->mRotationKeys[i + 1].mTime) {
+            return i;
+        }
+    }
+
+//    assert(0);
+
+    return 0;
+}
+
+
+uint AssimpLoader::FindScaling(float AnimationTime, const aiNodeAnim *pNodeAnim) {
+    assert(pNodeAnim->mNumScalingKeys > 0);
+
+    for (uint i = 0; i < pNodeAnim->mNumScalingKeys - 1; i++) {
+        if (AnimationTime < (float) pNodeAnim->mScalingKeys[i + 1].mTime) {
+            return i;
+        }
+    }
+
+//    assert(0);
+
+    return 0;
+}
+
+
+void AssimpLoader::CalcInterpolatedPosition(aiVector3D &Out, float AnimationTime,
+                                            const aiNodeAnim *pNodeAnim) {
+    if (pNodeAnim->mNumPositionKeys == 1) {
+        Out = pNodeAnim->mPositionKeys[0].mValue;
+        return;
+    }
+
+    uint PositionIndex = FindPosition(AnimationTime, pNodeAnim);
+    uint NextPositionIndex = (PositionIndex + 1);
+    assert(NextPositionIndex < pNodeAnim->mNumPositionKeys);
+    float DeltaTime = (float) (pNodeAnim->mPositionKeys[NextPositionIndex].mTime -
+                               pNodeAnim->mPositionKeys[PositionIndex].mTime);
+    float Factor =
+            (AnimationTime - (float) pNodeAnim->mPositionKeys[PositionIndex].mTime) / DeltaTime;
+//    assert(Factor >= 0.0f && Factor <= 1.0f);
+    const aiVector3D &Start = pNodeAnim->mPositionKeys[PositionIndex].mValue;
+    const aiVector3D &End = pNodeAnim->mPositionKeys[NextPositionIndex].mValue;
+    aiVector3D Delta = End - Start;
+    Out = Start + Factor * Delta;
+}
+
+
+void AssimpLoader::CalcInterpolatedRotation(aiQuaternion &Out, float AnimationTime,
+                                            const aiNodeAnim *pNodeAnim) {
+    // we need at least two values to interpolate...
+    if (pNodeAnim->mNumRotationKeys == 1) {
+        Out = pNodeAnim->mRotationKeys[0].mValue;
+        return;
+    }
+
+    uint RotationIndex = FindRotation(AnimationTime, pNodeAnim);
+    uint NextRotationIndex = (RotationIndex + 1);
+    assert(NextRotationIndex < pNodeAnim->mNumRotationKeys);
+    float DeltaTime = (float) (pNodeAnim->mRotationKeys[NextRotationIndex].mTime -
+                               pNodeAnim->mRotationKeys[RotationIndex].mTime);
+    float Factor =
+            (AnimationTime - (float) pNodeAnim->mRotationKeys[RotationIndex].mTime) / DeltaTime;
+//    assert(Factor >= 0.0f && Factor <= 1.0f);
+    const aiQuaternion &StartRotationQ = pNodeAnim->mRotationKeys[RotationIndex].mValue;
+    const aiQuaternion &EndRotationQ = pNodeAnim->mRotationKeys[NextRotationIndex].mValue;
+    aiQuaternion::Interpolate(Out, StartRotationQ, EndRotationQ, Factor);
+    Out = Out.Normalize();
+}
+
+
+void AssimpLoader::CalcInterpolatedScaling(aiVector3D &Out, float AnimationTime,
+                                           const aiNodeAnim *pNodeAnim) {
+    if (pNodeAnim->mNumScalingKeys == 1) {
+        Out = pNodeAnim->mScalingKeys[0].mValue;
+        return;
+    }
+
+    uint ScalingIndex = FindScaling(AnimationTime, pNodeAnim);
+    uint NextScalingIndex = (ScalingIndex + 1);
+    assert(NextScalingIndex < pNodeAnim->mNumScalingKeys);
+    float DeltaTime = (float) (pNodeAnim->mScalingKeys[NextScalingIndex].mTime -
+                               pNodeAnim->mScalingKeys[ScalingIndex].mTime);
+    float Factor =
+            (AnimationTime - (float) pNodeAnim->mScalingKeys[ScalingIndex].mTime) / DeltaTime;
+//    assert(Factor >= 0.0f && Factor <= 1.0f);
+    const aiVector3D &Start = pNodeAnim->mScalingKeys[ScalingIndex].mValue;
+    const aiVector3D &End = pNodeAnim->mScalingKeys[NextScalingIndex].mValue;
+    aiVector3D Delta = End - Start;
+    Out = Start + Factor * Delta;
+}
+
+const aiNodeAnim *
+AssimpLoader::FindNodeAnim(const aiAnimation *pAnimation, const std::string NodeName) {
+    for (uint i = 0; i < pAnimation->mNumChannels; i++) {
+        const aiNodeAnim *pNodeAnim = pAnimation->mChannels[i];
+
+        if (std::string(pNodeAnim->mNodeName.data) == NodeName) {
+            return pNodeAnim;
+        }
+    }
+
+    return NULL;
+}
+
+void AssimpLoader::VertexBoneData::AddBoneData(uint BoneID, float Weight)
+{
+    for (uint i = 0 ; i < ARRAY_SIZE_IN_ELEMENTS(IDs) ; i++) {
+        if (Weights[i] == 0.0) {
+            IDs[i]     = BoneID;
+            Weights[i] = Weight;
+            return;
+        }
+    }
+
+    // should never get here - more bones than we have space for
+    assert(0);
+}
