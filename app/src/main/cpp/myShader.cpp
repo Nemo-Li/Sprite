@@ -37,15 +37,15 @@ bool ReadShaderCode(std::string & shaderCode, std::string & shaderFileName) {
 /**
  * Compile the shader and log any error messages
  */
-bool CompileShader(GLuint & shaderID, const GLenum shaderType, std::string shaderCode) {
+bool CompileShader(GLuint & shaderID, const GLenum shaderType, char const * shaderCode) {
 
     // Create the shader
     shaderID = glCreateShader(shaderType);
 
     // Compile Shader
     MyLOGI("Compiling shader");
-    char const * sourcePointer = shaderCode.c_str();
-    glShaderSource(shaderID, 1, &sourcePointer, NULL);
+//    char const * sourcePointer = shaderCode.c_str();
+    glShaderSource(shaderID, 1, &shaderCode, NULL);
     glCompileShader(shaderID);
 
     // Check Shader
@@ -120,22 +120,64 @@ GLuint LoadShaders(std::string vertexShaderFilename,
     programID = glCreateProgram();
 
     // read and compile the vertex shader
-    std::string vertexShaderCode;
-    if (!ReadShaderCode(vertexShaderCode, vertexShaderFilename)) {
-        MyLOGE("Error in reading Vertex shader");
-        return 0;
-    }
+//    std::string vertexShaderCode;
+//    if (!ReadShaderCode(vertexShaderCode, vertexShaderFilename)) {
+//        MyLOGE("Error in reading Vertex shader");
+//        return 0;
+//    }
+
+    const char *vertexShaderCode = "#version 300 es\n"
+                                   "\n"
+                                   "layout (location = 0) in vec3 Position;\n"
+                                   "layout (location = 1) in vec2 TexCoord;\n"
+                                   "layout (location = 2) in vec3 Normal;\n"
+                                   "layout (location = 3) in ivec4 BoneIDs;\n"
+                                   "layout (location = 4) in vec4 Weights;\n"
+                                   "\n"
+                                   "out     vec2 textureCoords;\n"
+                                   "uniform     mat4 mvpMat;\n"
+                                   "\n"
+                                   "const int MAX_BONES = 100;\n"
+                                   "uniform mat4 gBones[MAX_BONES];\n"
+                                   "\n"
+                                   "void main()\n"
+                                   "{\n"
+                                   "    mat4 BoneTransform = gBones[BoneIDs[0]] * Weights[0];\n"
+                                   "    BoneTransform     += gBones[BoneIDs[1]] * Weights[1];\n"
+                                   "    BoneTransform     += gBones[BoneIDs[2]] * Weights[2];\n"
+                                   "    BoneTransform     += gBones[BoneIDs[3]] * Weights[3];\n"
+                                   "\n"
+                                   "    vec4 PosL    = BoneTransform * vec4(Position, 1.0);\n"
+                                   "    gl_Position     = mvpMat * PosL;\n"
+                                   "    textureCoords   = TexCoord;\n"
+                                   "}";
+
     if (!CompileShader(vertexShaderID, GL_VERTEX_SHADER, vertexShaderCode)) {
         MyLOGE("Error in compiling Vertex shader");
         return 0;
     }
 
     // read and compile the fragment shader
-    std::string fragmentShaderCode;
-    if (!ReadShaderCode(fragmentShaderCode, fragmentShaderFilename)) {
-        MyLOGE("Error in reading Fragment shader");
-        return 0;
-    }
+//    std::string fragmentShaderCode;
+//    if (!ReadShaderCode(fragmentShaderCode, fragmentShaderFilename)) {
+//        MyLOGE("Error in reading Fragment shader");
+//        return 0;
+//    }
+
+
+    const char *fragmentShaderCode = "#version 300 es\n"
+                                     "\n"
+                                     "precision mediump float; // required in GLSL ES 1.00\n"
+                                     "\n"
+                                     "in vec2      textureCoords;\n"
+                                     "uniform sampler2D textureSampler;\n"
+                                     "out vec4 fragColor;\n"
+                                     "\n"
+                                     "void main()\n"
+                                     "{\n"
+                                     "    fragColor.xyz = texture( textureSampler, textureCoords ).xyz;\n"
+                                     "}";
+
     if (!CompileShader(fragmentShaderID, GL_FRAGMENT_SHADER, fragmentShaderCode)) {
         MyLOGE("Error in compiling fragment shader");
         return 0;

@@ -17,14 +17,14 @@
 */
 
 #ifndef MATH_3D_H
-#define    MATH_3D_H
+#define MATH_3D_H
 
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <math.h>
 
 #include "include/assimp/vector3.h"
-
 #include "include/assimp/matrix4x4.h"
 #include "include/assimp/matrix3x3.h"
 

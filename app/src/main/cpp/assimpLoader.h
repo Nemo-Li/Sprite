@@ -1,6 +1,7 @@
 #ifndef ASSIMPLOADER_H
 #define ASSIMPLOADER_H
 
+#include "ogldev_math_3d.h"
 #include <map>
 #include <scene.h>
 #include <postprocess.h>
@@ -9,7 +10,6 @@
 
 #include "myGLM.h"
 #include "myGLFunctions.h"
-#include "ogldev_math_3d.h"
 
 // info used to render a mesh
 struct MeshInfo {
@@ -30,6 +30,10 @@ public:
     void Render3DModel(glm::mat4 *MVP);
 
     bool Load3DModel(std::string modelFilename);
+
+    bool LoadMesh(const std::string &Filename);
+
+    void Render();
 
     void BoneTransform(float TimeInSeconds, std::vector<Matrix4f> &Transforms);
 
@@ -91,6 +95,18 @@ private:
 
 #define INVALID_MATERIAL 0xFFFFFFFF
 
+    enum VB_TYPES {
+        INDEX_BUFFER,
+        POS_VB,
+        NORMAL_VB,
+        TEXCOORD_VB,
+        BONE_VB,
+        NUM_VBs
+    };
+
+    GLuint m_VAO;
+    GLuint m_Buffers[NUM_VBs];
+
     struct MeshEntry {
         MeshEntry() {
             NumIndices = 0;
@@ -105,8 +121,6 @@ private:
         unsigned int MaterialIndex;
     };
 
-
-
     std::vector<MeshEntry> m_Entries;
 
     std::map<std::string, uint> m_BoneMapping; // maps a bone name to its index
@@ -114,12 +128,21 @@ private:
     std::vector<BoneInfo> m_BoneInfo;
     Matrix4f m_GlobalInverseTransform;
 
-
     std::map<std::string, GLuint> textureNameMap;   // (texture filename, texture name in GL)
 
     GLuint vertexAttribute, vertexUVAttribute;     // attributes for shader variables
     GLuint shaderProgramID;
     GLint mvpLocation, textureSamplerLocation;    // location of MVP in the shader
+
+    bool InitFromScene(const aiScene *pScene, const std::string &Filename);
+
+    void InitMesh(uint MeshIndex,
+                  const aiMesh *paiMesh,
+                  std::vector<Vector3f> &Positions,
+                  std::vector<Vector3f> &Normals,
+                  std::vector<Vector2f> &TexCoords,
+                  std::vector<VertexBoneData> &Bones,
+                  std::vector<unsigned int> &Indices);
 
     void LoadBones(uint MeshIndex, const aiMesh *paiMesh, std::vector<VertexBoneData> &Bones);
 };

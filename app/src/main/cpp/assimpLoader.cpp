@@ -3,6 +3,14 @@
 #include "misc.h"
 #include <opencv2/opencv.hpp>
 
+#define ASSIMP_LOAD_FLAGS (aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs | aiProcess_JoinIdenticalVertices)
+
+#define POSITION_LOCATION    0
+#define TEX_COORD_LOCATION   1
+#define NORMAL_LOCATION      2
+#define BONE_ID_LOCATION     3
+#define BONE_WEIGHT_LOCATION 4
+
 
 /**
  * Class constructor, loads shaders & gets locations of variables in them
@@ -16,10 +24,10 @@ AssimpLoader::AssimpLoader() {
     std::string vertexShader = "shaders/modelTextured.vsh";
     std::string fragmentShader = "shaders/modelTextured.fsh";
     shaderProgramID = LoadShaders(vertexShader, fragmentShader);
-    vertexAttribute = GetAttributeLocation(shaderProgramID, "vertexPosition");
-    vertexUVAttribute = GetAttributeLocation(shaderProgramID, "vertexUV");
-    mvpLocation = GetUniformLocation(shaderProgramID, "mvpMat");
-    textureSamplerLocation = GetUniformLocation(shaderProgramID, "textureSampler");
+//    vertexAttribute = GetAttributeLocation(shaderProgramID, "Position");
+//    vertexUVAttribute = GetAttributeLocation(shaderProgramID, "TexCoord");
+//    mvpLocation = GetUniformLocation(shaderProgramID, "mvpMat");
+//    textureSamplerLocation = GetUniformLocation(shaderProgramID, "textureSampler");
 
     CheckGLError("AssimpLoader::AssimpLoader");
 }
@@ -306,6 +314,173 @@ void AssimpLoader::Render3DModel(glm::mat4 *mvpMat) {
 
     CheckGLError("AssimpLoader::renderObject() ");
 
+}
+
+bool AssimpLoader::LoadMesh(const std::string& Filename)
+{
+    // Release the previously loaded mesh (if it exists)
+//    Clear();
+
+    // Create the VAO
+    glGenVertexArrays(1, &m_VAO);
+    glBindVertexArray(m_VAO);
+
+    // Create the buffers for the vertices attributes
+    glGenBuffers(ARRAY_SIZE_IN_ELEMENTS(m_Buffers), m_Buffers);
+
+    bool Ret = false;
+
+    scene = importerPtr->ReadFile(Filename.c_str(), ASSIMP_LOAD_FLAGS);
+
+    if (scene) {
+        m_GlobalInverseTransform = scene->mRootNode->mTransformation;
+        m_GlobalInverseTransform.Inverse();
+        Ret = InitFromScene(scene, Filename);
+    }
+    else {
+        printf("Error parsing '%s': '%s'\n", Filename.c_str(), importerPtr->GetErrorString());
+    }
+
+    // Make sure the VAO is not changed from the outside
+    glBindVertexArray(0);
+
+    return Ret;
+}
+
+void AssimpLoader::Render()
+{
+    glBindVertexArray(m_VAO);
+
+    for (uint i = 0 ; i < m_Entries.size() ; i++) {
+        const uint MaterialIndex = m_Entries[i].MaterialIndex;
+
+//        assert(MaterialIndex < m_Textures.size());
+
+//        if (m_Textures[MaterialIndex]) {
+//            m_Textures[MaterialIndex]->Bind(GL_TEXTURE0);
+//        }
+
+//        glDrawElementsBaseVertex(GL_TRIANGLES,
+//                                 m_Entries[i].NumIndices,
+//                                 GL_UNSIGNED_INT,
+//                                 (void*)(sizeof(uint) * m_Entries[i].BaseIndex),
+//                                 m_Entries[i].BaseVertex);
+
+        glDrawElements(GL_TRIANGLES,
+                                 m_Entries[i].NumIndices,
+                                 GL_UNSIGNED_INT,
+                                 (void*)(sizeof(uint) * m_Entries[i].BaseIndex));
+
+    }
+
+    // Make sure the VAO is not changed from the outside
+    glBindVertexArray(0);
+}
+
+
+
+bool AssimpLoader::InitFromScene(const aiScene* pScene, const std::string& Filename)
+{
+    m_Entries.resize(pScene->mNumMeshes);
+//    m_Textures.resize(pScene->mNumMaterials);
+
+    std::vector<Vector3f> Positions;
+    std::vector<Vector3f> Normals;
+    std::vector<Vector2f> TexCoords;
+    std::vector<VertexBoneData> Bones;
+    std::vector<uint> Indices;
+
+    uint NumVertices = 0;
+    uint NumIndices = 0;
+
+    // Count the number of vertices and indices
+    for (uint i = 0 ; i < m_Entries.size() ; i++) {
+        m_Entries[i].MaterialIndex = pScene->mMeshes[i]->mMaterialIndex;
+        m_Entries[i].NumIndices    = pScene->mMeshes[i]->mNumFaces * 3;
+        m_Entries[i].BaseVertex    = NumVertices;
+        m_Entries[i].BaseIndex     = NumIndices;
+
+        NumVertices += pScene->mMeshes[i]->mNumVertices;
+        NumIndices  += m_Entries[i].NumIndices;
+    }
+
+    // Reserve space in the vectors for the vertex attributes and indices
+    Positions.reserve(NumVertices);
+    Normals.reserve(NumVertices);
+    TexCoords.reserve(NumVertices);
+    Bones.resize(NumVertices);
+    Indices.reserve(NumIndices);
+
+    // Initialize the meshes in the scene one by one
+    for (uint i = 0 ; i < m_Entries.size() ; i++) {
+        const aiMesh* paiMesh = pScene->mMeshes[i];
+        InitMesh(i, paiMesh, Positions, Normals, TexCoords, Bones, Indices);
+    }
+
+//    if (!InitMaterials(pScene, Filename)) {
+//        return false;
+//    }
+
+    // Generate and populate the buffers with vertex attributes and the indices
+    glBindBuffer(GL_ARRAY_BUFFER, m_Buffers[POS_VB]);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(Positions[0]) * Positions.size(), &Positions[0], GL_STATIC_DRAW);
+    glEnableVertexAttribArray(POSITION_LOCATION);
+    glVertexAttribPointer(POSITION_LOCATION, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+    glBindBuffer(GL_ARRAY_BUFFER, m_Buffers[TEXCOORD_VB]);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(TexCoords[0]) * TexCoords.size(), &TexCoords[0], GL_STATIC_DRAW);
+    glEnableVertexAttribArray(TEX_COORD_LOCATION);
+    glVertexAttribPointer(TEX_COORD_LOCATION, 2, GL_FLOAT, GL_FALSE, 0, 0);
+
+    glBindBuffer(GL_ARRAY_BUFFER, m_Buffers[NORMAL_VB]);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(Normals[0]) * Normals.size(), &Normals[0], GL_STATIC_DRAW);
+    glEnableVertexAttribArray(NORMAL_LOCATION);
+    glVertexAttribPointer(NORMAL_LOCATION, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+    glBindBuffer(GL_ARRAY_BUFFER, m_Buffers[BONE_VB]);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(Bones[0]) * Bones.size(), &Bones[0], GL_STATIC_DRAW);
+    glEnableVertexAttribArray(BONE_ID_LOCATION);
+    glVertexAttribIPointer(BONE_ID_LOCATION, 4, GL_INT, sizeof(VertexBoneData), (const GLvoid*)0);
+    glEnableVertexAttribArray(BONE_WEIGHT_LOCATION);
+    glVertexAttribPointer(BONE_WEIGHT_LOCATION, 4, GL_FLOAT, GL_FALSE, sizeof(VertexBoneData), (const GLvoid*)16);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_Buffers[INDEX_BUFFER]);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(Indices[0]) * Indices.size(), &Indices[0], GL_STATIC_DRAW);
+
+    return glGetError() == GL_NO_ERROR;
+}
+
+void AssimpLoader::InitMesh(uint MeshIndex,
+                           const aiMesh* paiMesh,
+                           std::vector<Vector3f>& Positions,
+                           std::vector<Vector3f>& Normals,
+                           std::vector<Vector2f>& TexCoords,
+                           std::vector<VertexBoneData>& Bones,
+                           std::vector<uint>& Indices)
+{
+    const aiVector3D Zero3D(0.0f, 0.0f, 0.0f);
+
+    // Populate the vertex attribute vectors
+    for (uint i = 0 ; i < paiMesh->mNumVertices ; i++) {
+        const aiVector3D* pPos      = &(paiMesh->mVertices[i]);
+        const aiVector3D* pNormal   = &(paiMesh->mNormals[i]);
+        const aiVector3D* pTexCoord = paiMesh->HasTextureCoords(0) ? &(paiMesh->mTextureCoords[0][i]) : &Zero3D;
+
+        Positions.push_back(Vector3f(pPos->x, pPos->y, pPos->z));
+        Normals.push_back(Vector3f(pNormal->x, pNormal->y, pNormal->z));
+        TexCoords.push_back(Vector2f(pTexCoord->x, pTexCoord->y));
+    }
+
+    LoadBones(MeshIndex, paiMesh, Bones);
+
+    // Populate the index buffer
+    for (uint i = 0 ; i < paiMesh->mNumFaces ; i++) {
+        const aiFace& Face = paiMesh->mFaces[i];
+        assert(Face.mNumIndices == 3);
+        Indices.push_back(Face.mIndices[0]);
+        Indices.push_back(Face.mIndices[1]);
+        Indices.push_back(Face.mIndices[2]);
+    }
 }
 
 void AssimpLoader::ReadNodeHierarchy(float AnimationTime, const aiNode *pNode,

@@ -22,7 +22,7 @@ void MyGLInits() {
 
     // check if the device supports GLES 3 or GLES 2
     const char *versionStr = (const char *) glGetString(GL_VERSION);
-    if (strstr(versionStr, "OpenGL ES 3.") && gl3stubInit()) {
+    if (strstr(versionStr, "OpenGL ES 3.")) {
         MyLOGD("Device supports GLES 3");
     } else {
         MyLOGD("Device supports GLES 2");
