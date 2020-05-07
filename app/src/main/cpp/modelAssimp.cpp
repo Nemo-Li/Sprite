@@ -5,6 +5,7 @@
 #include "Importer.hpp"
 #include <opencv2/opencv.hpp>
 #include "myJNIHelper.h"
+#include "spriteUtil.h"
 
 /**
  * Class constructor
@@ -16,11 +17,12 @@ ModelAssimp::ModelAssimp() {
 
     // create MyGLCamera object and set default position for the object
     myGLCamera = new MyGLCamera();
-    float pos[]={0.0,-8.0f,0.0,0.0,0.0,0.0};
+    float pos[] = {0.0, -8.0f, 0.0, 0.0, 0.0, 0.0};
     std::copy(&pos[0], &pos[5], std::back_inserter(modelDefaultPosition));
     myGLCamera->SetModelPosition(modelDefaultPosition);
     ScaleAction(0.5f);
 
+    m_startTime = GetCurrentTimeMillis();
     modelObject = NULL;
 }
 
@@ -93,12 +95,12 @@ void ModelAssimp::PerformGLInits() {
 
     gHelperObject->ExtractAssetReturnFilename("Attack.FBX", objFilename);
 
-    modelObject->Load3DModel(objFilename);
+//    modelObject->Load3DModel(objFilename);
+    modelObject->LoadMesh(objFilename);
 
     CheckGLError("ModelAssimp::PerformGLInits");
     initsDone = true;
 }
-
 
 /**
  * Render to the display
@@ -109,7 +111,18 @@ void ModelAssimp::Render() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     glm::mat4 mvpMat = myGLCamera->GetMVP();
-    modelObject->Render3DModel(&mvpMat);
+//    modelObject->Render3DModel(&mvpMat);
+    std::vector<Matrix4f> Transforms;
+
+    float RunningTime = GetRunningTime();
+
+    modelObject->BoneTransform(RunningTime, Transforms);
+
+    for (uint i = 0; i < Transforms.size(); i++) {
+        modelObject->SetBoneTransform(i, Transforms[i]);
+    }
+
+    modelObject->Render(&mvpMat);
 
     CheckGLError("ModelAssimp::Render");
 
@@ -127,7 +140,6 @@ void ModelAssimp::SetViewport(int width, int height) {
 
     myGLCamera->SetAspectRatio((float) width / height);
 }
-
 
 /**
  * reset model's position in double-tap
@@ -159,4 +171,9 @@ void ModelAssimp::ScaleAction(float scaleFactor) {
 void ModelAssimp::MoveAction(float distanceX, float distanceY) {
 
     myGLCamera->TranslateModel(distanceX, distanceY);
+}
+
+float ModelAssimp::GetRunningTime() {
+    float RunningTime = (float) ((double) GetCurrentTimeMillis() - (double) m_startTime) / 1000.0f;
+    return RunningTime;
 }

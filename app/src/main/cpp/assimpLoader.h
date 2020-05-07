@@ -8,6 +8,7 @@
 #include <Importer.hpp>
 #include <vector>
 
+#include "spriteUtil.h"
 #include "myGLM.h"
 #include "myGLFunctions.h"
 
@@ -23,6 +24,8 @@ struct MeshInfo {
 class AssimpLoader {
 
 public:
+    static const uint MAX_BONES = 100;
+
     AssimpLoader();
 
     ~AssimpLoader();
@@ -33,7 +36,9 @@ public:
 
     bool LoadMesh(const std::string &Filename);
 
-    void Render();
+    void SetBoneTransform(uint Index, const Matrix4f& Transform);
+
+    void Render(glm::mat4 *MVP);
 
     void BoneTransform(float TimeInSeconds, std::vector<Matrix4f> &Transforms);
 
@@ -67,6 +72,10 @@ private:
 
         void AddBoneData(uint BoneID, float Weight);
     };
+
+    GLint m_boneLocation[MAX_BONES];
+
+    GLint GetUniformLocation(const char* pUniformName);
 
     void CalcInterpolatedScaling(aiVector3D &Out, float AnimationTime, const aiNodeAnim *pNodeAnim);
 

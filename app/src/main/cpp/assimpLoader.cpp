@@ -26,10 +26,33 @@ AssimpLoader::AssimpLoader() {
     shaderProgramID = LoadShaders(vertexShader, fragmentShader);
 //    vertexAttribute = GetAttributeLocation(shaderProgramID, "Position");
 //    vertexUVAttribute = GetAttributeLocation(shaderProgramID, "TexCoord");
-//    mvpLocation = GetUniformLocation(shaderProgramID, "mvpMat");
-//    textureSamplerLocation = GetUniformLocation(shaderProgramID, "textureSampler");
+    mvpLocation = GetUniformLocation("mvpMat");
+    textureSamplerLocation = GetUniformLocation("textureSampler");
+
+    for (unsigned int i = 0; i < ARRAY_SIZE_IN_ELEMENTS(m_boneLocation); i++) {
+        char Name[128];
+        memset(Name, 0, sizeof(Name));
+        SNPRINTF(Name, sizeof(Name), "gBones[%d]", i);
+        m_boneLocation[i] = GetUniformLocation(Name);
+    }
 
     CheckGLError("AssimpLoader::AssimpLoader");
+}
+
+GLint AssimpLoader::GetUniformLocation(const char *pUniformName) {
+    GLint Location = glGetUniformLocation(shaderProgramID, pUniformName);
+
+    if (Location == INVALID_UNIFORM_LOCATION) {
+        fprintf(stderr, "Warning! Unable to get the location of uniform '%s'\n", pUniformName);
+    }
+
+    return Location;
+}
+
+void AssimpLoader::SetBoneTransform(uint Index, const Matrix4f &Transform) {
+    assert(Index < MAX_BONES);
+    //Transform.Print();
+    glUniformMatrix4fv(m_boneLocation[Index], 1, GL_TRUE, (const GLfloat *) Transform);
 }
 
 /**
@@ -316,8 +339,7 @@ void AssimpLoader::Render3DModel(glm::mat4 *mvpMat) {
 
 }
 
-bool AssimpLoader::LoadMesh(const std::string& Filename)
-{
+bool AssimpLoader::LoadMesh(const std::string &Filename) {
     // Release the previously loaded mesh (if it exists)
 //    Clear();
 
@@ -336,8 +358,7 @@ bool AssimpLoader::LoadMesh(const std::string& Filename)
         m_GlobalInverseTransform = scene->mRootNode->mTransformation;
         m_GlobalInverseTransform.Inverse();
         Ret = InitFromScene(scene, Filename);
-    }
-    else {
+    } else {
         printf("Error parsing '%s': '%s'\n", Filename.c_str(), importerPtr->GetErrorString());
     }
 
@@ -347,12 +368,18 @@ bool AssimpLoader::LoadMesh(const std::string& Filename)
     return Ret;
 }
 
-void AssimpLoader::Render()
-{
+void AssimpLoader::Render(glm::mat4 *mvpMat) {
+
+    glUseProgram(shaderProgramID);
+    glUniformMatrix4fv(mvpLocation, 1, GL_FALSE, (const GLfloat *) mvpMat);
+
+    glActiveTexture(GL_TEXTURE0);
+    glUniform1i(textureSamplerLocation, 0);
+
     glBindVertexArray(m_VAO);
 
-    for (uint i = 0 ; i < m_Entries.size() ; i++) {
-        const uint MaterialIndex = m_Entries[i].MaterialIndex;
+//    for (uint i = 0; i < m_Entries.size(); i++) {
+//        const uint MaterialIndex = m_Entries[i].MaterialIndex;
 
 //        assert(MaterialIndex < m_Textures.size());
 
@@ -366,21 +393,18 @@ void AssimpLoader::Render()
 //                                 (void*)(sizeof(uint) * m_Entries[i].BaseIndex),
 //                                 m_Entries[i].BaseVertex);
 
-        glDrawElements(GL_TRIANGLES,
-                                 m_Entries[i].NumIndices,
-                                 GL_UNSIGNED_INT,
-                                 (void*)(sizeof(uint) * m_Entries[i].BaseIndex));
+//        glDrawElements(GL_TRIANGLES, m_Entries[i].NumIndices, GL_UNSIGNED_INT, 0);
 
-    }
+//        glDrawElements(GL_TRIANGLES, modelMeshes[n].numberOfFaces * 3, GL_UNSIGNED_INT, 0);
+//    }
+    glDrawElements(GL_TRIANGLES, m_Entries[0].NumIndices, GL_UNSIGNED_INT, 0);
 
     // Make sure the VAO is not changed from the outside
     glBindVertexArray(0);
 }
 
 
-
-bool AssimpLoader::InitFromScene(const aiScene* pScene, const std::string& Filename)
-{
+bool AssimpLoader::InitFromScene(const aiScene *pScene, const std::string &Filename) {
     m_Entries.resize(pScene->mNumMeshes);
 //    m_Textures.resize(pScene->mNumMaterials);
 
@@ -394,14 +418,14 @@ bool AssimpLoader::InitFromScene(const aiScene* pScene, const std::string& Filen
     uint NumIndices = 0;
 
     // Count the number of vertices and indices
-    for (uint i = 0 ; i < m_Entries.size() ; i++) {
+    for (uint i = 0; i < m_Entries.size(); i++) {
         m_Entries[i].MaterialIndex = pScene->mMeshes[i]->mMaterialIndex;
-        m_Entries[i].NumIndices    = pScene->mMeshes[i]->mNumFaces * 3;
-        m_Entries[i].BaseVertex    = NumVertices;
-        m_Entries[i].BaseIndex     = NumIndices;
+        m_Entries[i].NumIndices = pScene->mMeshes[i]->mNumFaces * 3;
+        m_Entries[i].BaseVertex = NumVertices;
+        m_Entries[i].BaseIndex = NumIndices;
 
         NumVertices += pScene->mMeshes[i]->mNumVertices;
-        NumIndices  += m_Entries[i].NumIndices;
+        NumIndices += m_Entries[i].NumIndices;
     }
 
     // Reserve space in the vectors for the vertex attributes and indices
@@ -412,8 +436,8 @@ bool AssimpLoader::InitFromScene(const aiScene* pScene, const std::string& Filen
     Indices.reserve(NumIndices);
 
     // Initialize the meshes in the scene one by one
-    for (uint i = 0 ; i < m_Entries.size() ; i++) {
-        const aiMesh* paiMesh = pScene->mMeshes[i];
+    for (uint i = 0; i < m_Entries.size(); i++) {
+        const aiMesh *paiMesh = pScene->mMeshes[i];
         InitMesh(i, paiMesh, Positions, Normals, TexCoords, Bones, Indices);
     }
 
@@ -423,12 +447,14 @@ bool AssimpLoader::InitFromScene(const aiScene* pScene, const std::string& Filen
 
     // Generate and populate the buffers with vertex attributes and the indices
     glBindBuffer(GL_ARRAY_BUFFER, m_Buffers[POS_VB]);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(Positions[0]) * Positions.size(), &Positions[0], GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(Positions[0]) * Positions.size(), &Positions[0],
+                 GL_STATIC_DRAW);
     glEnableVertexAttribArray(POSITION_LOCATION);
     glVertexAttribPointer(POSITION_LOCATION, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
     glBindBuffer(GL_ARRAY_BUFFER, m_Buffers[TEXCOORD_VB]);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(TexCoords[0]) * TexCoords.size(), &TexCoords[0], GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(TexCoords[0]) * TexCoords.size(), &TexCoords[0],
+                 GL_STATIC_DRAW);
     glEnableVertexAttribArray(TEX_COORD_LOCATION);
     glVertexAttribPointer(TEX_COORD_LOCATION, 2, GL_FLOAT, GL_FALSE, 0, 0);
 
@@ -440,31 +466,33 @@ bool AssimpLoader::InitFromScene(const aiScene* pScene, const std::string& Filen
     glBindBuffer(GL_ARRAY_BUFFER, m_Buffers[BONE_VB]);
     glBufferData(GL_ARRAY_BUFFER, sizeof(Bones[0]) * Bones.size(), &Bones[0], GL_STATIC_DRAW);
     glEnableVertexAttribArray(BONE_ID_LOCATION);
-    glVertexAttribIPointer(BONE_ID_LOCATION, 4, GL_INT, sizeof(VertexBoneData), (const GLvoid*)0);
+    glVertexAttribIPointer(BONE_ID_LOCATION, 4, GL_INT, sizeof(VertexBoneData), (const GLvoid *) 0);
     glEnableVertexAttribArray(BONE_WEIGHT_LOCATION);
-    glVertexAttribPointer(BONE_WEIGHT_LOCATION, 4, GL_FLOAT, GL_FALSE, sizeof(VertexBoneData), (const GLvoid*)16);
+    glVertexAttribPointer(BONE_WEIGHT_LOCATION, 4, GL_FLOAT, GL_FALSE, sizeof(VertexBoneData),
+                          (const GLvoid *) 16);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_Buffers[INDEX_BUFFER]);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(Indices[0]) * Indices.size(), &Indices[0], GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(Indices[0]) * Indices.size(), &Indices[0],
+                 GL_STATIC_DRAW);
 
     return glGetError() == GL_NO_ERROR;
 }
 
 void AssimpLoader::InitMesh(uint MeshIndex,
-                           const aiMesh* paiMesh,
-                           std::vector<Vector3f>& Positions,
-                           std::vector<Vector3f>& Normals,
-                           std::vector<Vector2f>& TexCoords,
-                           std::vector<VertexBoneData>& Bones,
-                           std::vector<uint>& Indices)
-{
+                            const aiMesh *paiMesh,
+                            std::vector<Vector3f> &Positions,
+                            std::vector<Vector3f> &Normals,
+                            std::vector<Vector2f> &TexCoords,
+                            std::vector<VertexBoneData> &Bones,
+                            std::vector<uint> &Indices) {
     const aiVector3D Zero3D(0.0f, 0.0f, 0.0f);
 
     // Populate the vertex attribute vectors
-    for (uint i = 0 ; i < paiMesh->mNumVertices ; i++) {
-        const aiVector3D* pPos      = &(paiMesh->mVertices[i]);
-        const aiVector3D* pNormal   = &(paiMesh->mNormals[i]);
-        const aiVector3D* pTexCoord = paiMesh->HasTextureCoords(0) ? &(paiMesh->mTextureCoords[0][i]) : &Zero3D;
+    for (uint i = 0; i < paiMesh->mNumVertices; i++) {
+        const aiVector3D *pPos = &(paiMesh->mVertices[i]);
+        const aiVector3D *pNormal = &(paiMesh->mNormals[i]);
+        const aiVector3D *pTexCoord = paiMesh->HasTextureCoords(0)
+                                      ? &(paiMesh->mTextureCoords[0][i]) : &Zero3D;
 
         Positions.push_back(Vector3f(pPos->x, pPos->y, pPos->z));
         Normals.push_back(Vector3f(pNormal->x, pNormal->y, pNormal->z));
@@ -474,8 +502,8 @@ void AssimpLoader::InitMesh(uint MeshIndex,
     LoadBones(MeshIndex, paiMesh, Bones);
 
     // Populate the index buffer
-    for (uint i = 0 ; i < paiMesh->mNumFaces ; i++) {
-        const aiFace& Face = paiMesh->mFaces[i];
+    for (uint i = 0; i < paiMesh->mNumFaces; i++) {
+        const aiFace &Face = paiMesh->mFaces[i];
         assert(Face.mNumIndices == 3);
         Indices.push_back(Face.mIndices[0]);
         Indices.push_back(Face.mIndices[1]);
@@ -698,11 +726,10 @@ AssimpLoader::FindNodeAnim(const aiAnimation *pAnimation, const std::string Node
     return NULL;
 }
 
-void AssimpLoader::VertexBoneData::AddBoneData(uint BoneID, float Weight)
-{
-    for (uint i = 0 ; i < ARRAY_SIZE_IN_ELEMENTS(IDs) ; i++) {
+void AssimpLoader::VertexBoneData::AddBoneData(uint BoneID, float Weight) {
+    for (uint i = 0; i < ARRAY_SIZE_IN_ELEMENTS(IDs); i++) {
         if (Weights[i] == 0.0) {
-            IDs[i]     = BoneID;
+            IDs[i] = BoneID;
             Weights[i] = Weight;
             return;
         }

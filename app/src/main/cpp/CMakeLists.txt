@@ -29,6 +29,8 @@ file(GLOB ROOT_SOURCE *.cpp)
 
 add_library(modelimp SHARED
         math_3d.cpp
+        myGLFunctions.cpp
+        spriteUtil.cpp
         ${ROOT_SOURCE})
 
 add_library(
