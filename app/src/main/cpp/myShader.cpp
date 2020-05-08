@@ -175,7 +175,7 @@ GLuint LoadShaders(std::string vertexShaderFilename,
                                      "\n"
                                      "void main()\n"
                                      "{\n"
-                                     "    fragColor.xyz = texture( textureSampler, textureCoords ).xyz;\n"
+                                     "    fragColor.xyz = vec3(0.5,0.5,0.5).xyz;\n"
                                      "}";
 
     if (!CompileShader(fragmentShaderID, GL_FRAGMENT_SHADER, fragmentShaderCode)) {

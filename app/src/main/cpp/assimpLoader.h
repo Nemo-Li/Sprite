@@ -114,7 +114,8 @@ private:
     };
 
     GLuint m_VAO;
-    GLuint m_Buffers[NUM_VBs];
+    GLuint m_Buffers[15];
+    GLuint m_VAOs[3];
 
     struct MeshEntry {
         MeshEntry() {
@@ -133,7 +134,7 @@ private:
     std::vector<MeshEntry> m_Entries;
 
     std::map<std::string, uint> m_BoneMapping; // maps a bone name to its index
-    uint m_NumBones;
+    uint m_NumBones = 0;
     std::vector<BoneInfo> m_BoneInfo;
     Matrix4f m_GlobalInverseTransform;
 

@@ -43,7 +43,7 @@ class MyGLSurfaceView extends GLSurfaceView {
 
 
             // calls onDrawFrame(...) continuously
-//            setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
+            setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
 
         } catch (Exception e) {
 
